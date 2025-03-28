@@ -27,17 +27,36 @@ import numpy as np
 
 from mujoco_playground._src import collision
 from mujoco_playground._src import mjx_env
-from mujoco_playground._src.manipulation.franka_emika_panda import panda
-from mujoco_playground._src.manipulation.franka_emika_panda import panda_kinematics
-from mujoco_playground._src.manipulation.franka_emika_panda import pick
+from mujoco_playground._src.manipulation.franka_emika_panda import panda_serl
+from mujoco_playground._src.manipulation.franka_emika_panda.panda_kinematics_serl import opspace
+
+_ARM_JOINTS = [
+    "joint1",
+    "joint2",
+    "joint3",
+    "joint4",
+    "joint5",
+    "joint6",
+    "joint7",
+]
+_FINGER_JOINTS = ["finger_joint1", "finger_joint2"]
+
+def get_assets() -> Dict[str, bytes]:
+  assets = {}
+  path = mjx_env.ROOT_PATH / "manipulation" / "franka_emika_panda" / "xmls" / "panda_serl"
+  mjx_env.update_assets(assets, path, "*.xml")
+  mjx_env.update_assets(assets, path / "textures")
+  mjx_env.update_assets(assets, path / "assets")
+  mjx_env.update_assets(assets, path / "textures" / "skyboxes")
+  return assets
 
 
 def default_vision_config() -> config_dict.ConfigDict:
   return config_dict.create(
       gpu_id=0,
-      render_batch_size=1024,
-      render_width=64,
-      render_height=64,
+      render_batch_size=4,
+      render_width=128,
+      render_height=128,
       use_rasterizer=False,
       enabled_geom_groups=[0, 1, 2],
   )
@@ -84,9 +103,8 @@ def adjust_brightness(img, scale):
   return jp.clip(img * scale, 0, 1)
 
 
-class PandaPickCubeCartesian(pick.PandaPickCube):
-  """Environment for training the Franka Panda robot to pick up a cube in
-  Cartesian space."""
+class PandaPickStrawb(panda_serl.PandaBaseSERL):
+  """Environment for training the Franka Panda robot to pick a strawberry."""
 
   def __init__(  # pylint: disable=non-parent-init-called,super-init-not-called
       self,
@@ -102,13 +120,14 @@ class PandaPickCubeCartesian(pick.PandaPickCube):
         / 'manipulation'
         / 'franka_emika_panda'
         / 'xmls'
-        / 'mjx_single_cube_camera.xml'
+        / 'panda_serl'
+        / 'mjmodel.xml'
     )
     self._xml_path = xml_path.as_posix()
 
     mj_model = self.modify_model(
         mujoco.MjModel.from_xml_string(
-            xml_path.read_text(), assets=panda.get_assets()
+            xml_path.read_text(), assets=panda_serl.get_assets()
         )
     )
     mj_model.opt.timestep = config.sim_dt
@@ -116,9 +135,19 @@ class PandaPickCubeCartesian(pick.PandaPickCube):
     self._mj_model = mj_model
     self._mjx_model = mjx.put_model(mj_model)
 
+    self._PANDA_HOME = np.array([0.0, -1.6, 0.0, -2.54, -0.05, 2.49, 0.822], dtype=np.float32)
+    self._GRIPPER_HOME = np.array([0.0141, 0.0141], dtype=np.float32)
+    self._GRIPPER_MIN = 0.0
+    self._GRIPPER_MAX = 0.007
+    self._PANDA_XYZ = np.array([0.1, 0, 0.8], dtype=np.float32)
+    self._CARTESIAN_BOUNDS = np.array([[0.05, -0.2, 0.6], [0.55, 0.2, 0.95]], dtype=np.float32)
+    self._ROTATION_BOUNDS = np.array([[-np.pi/3, -np.pi/6, -np.pi/10],[np.pi/3, np.pi/6, np.pi/10]], dtype=np.float32)
+    self.default_obj_pos = np.array([0.42, 0, 0.95])
+    self.initial_position = np.array([0.1, 0.0, 0.75], dtype=np.float32)
+    self.initial_orientation = [0.725, 0.0, 0.688, 0.0]
+
     # Set gripper in sight of camera
-    self._post_init(obj_name='box', keyframe='low_home')
-    self._box_geom = self._mj_model.geom('box').id
+    self._post_init()
 
     if self._vision:
       try:
@@ -145,68 +174,51 @@ class PandaPickCubeCartesian(pick.PandaPickCube):
           viz_gpu_hdls=None,
       )
 
-  def _post_init(self, obj_name, keyframe):
-    super()._post_init(obj_name, keyframe)
-    self._guide_q = self._mj_model.keyframe('picked').qpos
-    self._guide_ctrl = self._mj_model.keyframe('picked').ctrl
-    # Use forward kinematics to init cartesian control
-    self._start_tip_transform = panda_kinematics.compute_franka_fk(
-        self._init_ctrl[:7]
-    )
-    self._sample_orientation = False
+  def _post_init(self) -> None:
+    all_joints = _ARM_JOINTS + _FINGER_JOINTS
+    self._robot_arm_qposadr = np.array([
+        self._mj_model.jnt_qposadr[self._mj_model.joint(j).id]
+        for j in _ARM_JOINTS
+    ])
+    self._robot_qposadr = np.array([
+        self._mj_model.jnt_qposadr[self._mj_model.joint(j).id]
+        for j in all_joints
+    ])
+    self._gripper_site = self._mj_model.site("pinch").id
+    self._mocap_target = self._mj_model.body("target").mocapid
+    self._floor_geom = self._mj_model.geom("floor").id
+    self.init_q = np.concatenate([self._PANDA_HOME, self._GRIPPER_HOME])
+    self._lowers, self._uppers = self._mj_model.actuator_ctrlrange.T
 
   def modify_model(self, mj_model: mujoco.MjModel):
     # Expand floor size to non-zero so Madrona can render it
     mj_model.geom_size[mj_model.geom('floor').id, :2] = [5.0, 5.0]
 
-    # Make the finger pads white for increased visibility
-    mesh_id = mj_model.mesh('finger_1').id
-    geoms = [
-        idx
-        for idx, data_id in enumerate(mj_model.geom_dataid)
-        if data_id == mesh_id
-    ]
-    mj_model.geom_matid[geoms] = mj_model.mat('off_white').id
     return mj_model
 
   def reset(self, rng: jax.Array) -> mjx_env.State:
     """Resets the environment to an initial state."""
-    x_plane = self._start_tip_transform[0, 3] - 0.03  # Account for finite gain
-
-    # intialize box position
-    rng, rng_box = jax.random.split(rng)
-    r_range = self._config.box_init_range
-    box_pos = jp.array([
-        x_plane,
-        jax.random.uniform(rng_box, (), minval=-r_range, maxval=r_range),
-        0.0,
-    ])
 
     # Fixed target position to simplify pixels-only training.
-    target_pos = jp.array([x_plane, 0.0, 0.20])
+    target_pos = self.initial_position
 
     # initialize pipeline state
-    init_q = (
-        jp.array(self._init_q)
-        .at[self._obj_qposadr : self._obj_qposadr + 3]
-        .set(box_pos)
-    )
     data = mjx_env.init(
         self._mjx_model,
-        init_q,
+        jp.array(self.init_q),
         jp.zeros(self._mjx_model.nv, dtype=float),
         ctrl=self._init_ctrl,
     )
 
-    target_quat = jp.array([1.0, 0.0, 0.0, 0.0], dtype=float)
+    target_quat = jp.array(self.initial_orientation, dtype=float)
     data = data.replace(
         mocap_quat=data.mocap_quat.at[self._mocap_target, :].set(target_quat)
     )
-    if not self._vision:
-      # mocap target should not appear in the pixels observation.
-      data = data.replace(
-          mocap_pos=data.mocap_pos.at[self._mocap_target, :].set(target_pos)
-      )
+    # if not self._vision:
+    #   # mocap target should not appear in the pixels observation.
+    data = data.replace(
+        mocap_pos=data.mocap_pos.at[self._mocap_target, :].set(target_pos)
+    )
 
     # initialize env state and info
     metrics = {
@@ -222,13 +234,10 @@ class PandaPickCubeCartesian(pick.PandaPickCube):
         'target_pos': target_pos,
         'reached_box': jp.array(0.0, dtype=float),
         'prev_reward': jp.array(0.0, dtype=float),
-        'current_pos': self._start_tip_transform[:3, 3],
+        'current_pos': jp.array(self.data.sensor("pinch_pos").data),
         'newly_reset': jp.array(False, dtype=bool),
         'prev_action': jp.zeros(3),
         '_steps': jp.array(0, dtype=int),
-        'action_history': jp.zeros((
-            self._config.action_history_length,
-        )),  # Gripper only
     }
 
     reward, done = jp.zeros(2)
@@ -256,16 +265,8 @@ class PandaPickCubeCartesian(pick.PandaPickCube):
 
   def step(self, state: mjx_env.State, action: jax.Array) -> mjx_env.State:
     """Runs one timestep of the environment's dynamics."""
-    action_history = (
-        jp.roll(state.info['action_history'], 1).at[0].set(action[2])
-    )
-    state.info['action_history'] = action_history
     # Add action delay
     state.info['rng'], key = jax.random.split(state.info['rng'])
-    action_idx = jax.random.randint(
-        key, (), minval=0, maxval=self._config.action_history_length
-    )
-    action = action.at[2].set(state.info['action_history'][action_idx])
 
     state.info['newly_reset'] = state.info['_steps'] == 0
 
@@ -273,26 +274,12 @@ class PandaPickCubeCartesian(pick.PandaPickCube):
     state.info['prev_reward'] = jp.where(
         newly_reset, 0.0, state.info['prev_reward']
     )
-    state.info['current_pos'] = jp.where(
-        newly_reset, self._start_tip_transform[:3, 3], state.info['current_pos']
-    )
+    state.info['current_pos'] = jp.array(self.data.sensor("pinch_pos").data)
     state.info['reached_box'] = jp.where(
         newly_reset, 0.0, state.info['reached_box']
     )
     state.info['prev_action'] = jp.where(
         newly_reset, jp.zeros(3), state.info['prev_action']
-    )
-
-    # Ocassionally aid exploration.
-    state.info['rng'], key_swap = jax.random.split(state.info['rng'])
-    to_sample = newly_reset * jax.random.bernoulli(key_swap, 0.05)
-    swapped_data = state.data.replace(
-        qpos=self._guide_q, ctrl=self._guide_ctrl
-    )  # help hit the terminal sparse reward.
-    data = jax.tree_util.tree_map(
-        lambda x, y: (1 - to_sample) * x + to_sample * y,
-        state.data,
-        swapped_data,
     )
 
     # Cartesian control
@@ -437,6 +424,67 @@ class PandaPickCubeCartesian(pick.PandaPickCube):
     new_ctrl = new_ctrl.at[7].set(new_ctrl[7] + claw_delta)
 
     return new_ctrl, new_tip_pos, no_soln
+  
+  def _get_reward(self, data: mjx.Data, info: Dict[str, Any]) -> Dict[str, Any]:
+    target_pos = info["target_pos"]
+    box_pos = data.xpos[self._obj_body]
+    gripper_pos = data.site_xpos[self._gripper_site]
+    pos_err = jp.linalg.norm(target_pos - box_pos)
+    box_mat = data.xmat[self._obj_body]
+    target_mat = math.quat_to_mat(data.mocap_quat[self._mocap_target])
+    rot_err = jp.linalg.norm(target_mat.ravel()[:6] - box_mat.ravel()[:6])
+
+    box_target = 1 - jp.tanh(5 * (0.9 * pos_err + 0.1 * rot_err))
+    gripper_box = 1 - jp.tanh(5 * jp.linalg.norm(box_pos - gripper_pos))
+    robot_target_qpos = 1 - jp.tanh(
+        jp.linalg.norm(
+            data.qpos[self._robot_arm_qposadr]
+            - self._init_q[self._robot_arm_qposadr]
+        )
+    )
+
+    # Check for collisions with the floor
+    hand_floor_collision = [
+        collision.geoms_colliding(data, self._floor_geom, g)
+        for g in [
+            self._left_finger_geom,
+            self._right_finger_geom,
+            self._hand_geom,
+        ]
+    ]
+    floor_collision = sum(hand_floor_collision) > 0
+    no_floor_collision = (1 - floor_collision).astype(float)
+
+    info["reached_box"] = 1.0 * jp.maximum(
+        info["reached_box"],
+        (jp.linalg.norm(box_pos - gripper_pos) < 0.012),
+    )
+
+    rewards = {
+        "gripper_box": gripper_box,
+        "box_target": box_target * info["reached_box"],
+        "no_floor_collision": no_floor_collision,
+        "robot_target_qpos": robot_target_qpos,
+    }
+    return rewards
+
+  def _get_obs(self, data: mjx.Data, info: dict[str, Any]) -> jax.Array:
+    gripper_pos = data.site_xpos[self._gripper_site]
+    gripper_mat = data.site_xmat[self._gripper_site].ravel()
+    target_mat = math.quat_to_mat(data.mocap_quat[self._mocap_target])
+    obs = jp.concatenate([
+        data.qpos,
+        data.qvel,
+        gripper_pos,
+        gripper_mat[3:],
+        data.xmat[self._obj_body].ravel()[3:],
+        data.xpos[self._obj_body] - data.site_xpos[self._gripper_site],
+        info["target_pos"] - data.xpos[self._obj_body],
+        target_mat.ravel()[:6] - data.xmat[self._obj_body].ravel()[:6],
+        data.ctrl - data.qpos[self._robot_qposadr[:-1]],
+    ])
+
+    return obs
 
   @property
   def observation_size(self) -> mjx_env.ObservationSize:
