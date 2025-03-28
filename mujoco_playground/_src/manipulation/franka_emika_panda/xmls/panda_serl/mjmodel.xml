@@ -76,7 +76,7 @@
     <texture type="2d" name="PavingStones131" file="textures/PavingStones131_2K-PNG_Color.png"/>
     <texture type="2d" name="Bricks095" file="textures/Bricks095_2K-PNG_Color.png"/>
     <texture type="2d" name="Tiles074" file="textures/Tiles074_2K-PNG_Color.png"/>
-    <texture type="2d" name="DiamondPlate008C" file="textures/DiamondPlate008C_2K-PNG_Color.png"/>
+    <!-- <texture type="2d" name="DiamondPlate008C" file="textures/DiamondPlate008C_2K-PNG_Color.png"/>
     <texture type="2d" name="Ground072" file="textures/Ground072_2K-PNG_Color.png"/>
     <texture type="2d" name="Metal056C" file="textures/Metal056C_2K-PNG_Color.png"/>
     <texture type="2d" name="Planks033B" file="textures/Planks033B_2K-PNG_Color.png"/>
@@ -105,7 +105,7 @@
     <texture type="2d" name="Wood059" file="textures/Wood059_2K-PNG_Color.png"/>
     <texture type="2d" name="Tiles078" file="textures/Tiles078_2K-PNG_Color.png"/>
     <texture type="2d" name="Fabric019" file="textures/Fabric019_2K-PNG_Color.png"/>
-    <texture type="2d" name="Travertine013" file="textures/Travertine013_2K-PNG_Color.png"/>
+    <texture type="2d" name="Travertine013" file="textures/Travertine013_2K-PNG_Color.png"/> -->
     <texture type="2d" name="Bricks051" file="textures/Bricks051_2K-PNG_Color.png"/>
     <texture name="strawb_color" type="2d" file="textures/strawberry.png"/>
     <texture name="strawb_leaves" type="2d" file="textures/strawberry_leaves.png"/>
@@ -348,7 +348,7 @@
                         <geom class="d435i_collision" size="0.00968864 0.0334784" pos="0.00145113 -0.000319327 -0.0135412" quat="0.029024 0.708312 0.0275527 0.704764" type="capsule" mass="0"/>
                         <site name="camera_2_site" pos="0.0325 0 -0.003" quat="0 0 1 0" size="0.001" rgba="1 0 0 1"/>
                         <body name="wrist2" pos="0.0325 0 -0.003" quat="0 0 1 0">
-                          <camera name="wrist2" pos="0 0 0" fovy="42"/>
+                          <!-- <camera name="wrist2" pos="0 0 0" fovy="42"/> -->
                         </body>
                       </body>
                       <body name="hand" pos="0 0 0.0016" quat="0.92388 0 0 -0.382683">
@@ -395,7 +395,7 @@
       </body>
     </body>
     <body name="front" pos="1.040 1.211 0.499" xyaxes="-0.811 0.585 -0.000 -0.007 -0.010 1.000">
-      <camera name="front" pos="0 0 0" fovy="41"/>
+      <!-- <camera name="front" pos="0 0 0" fovy="41"/> -->
     </body>
 
     <!-- <body name="front" pos="0.5 -1.0 0.8" xyaxes="1.0 0 0 0 0 1.000">
@@ -405,7 +405,7 @@
       <camera name="front" pos="0 0 0" fovy="41"/>
     </body> -->
     <body name="side" pos="-0.151 -3.348 0.778" xyaxes="0.998 -0.056 -0.000 -0.001 -0.017 1.000"> 
-      <camera name="side" pos="0 0 0" fovy="41"/>
+      <!-- <camera name="side" pos="0 0 0" fovy="41"/> -->
     </body>
     <body name="light0" pos="0.3 0 1.6">
       <light pos="0 0 0" dir="0 0 -1" ambient="0.1 0.1 0.1" diffuse="0.2 0.2 0.2"/>

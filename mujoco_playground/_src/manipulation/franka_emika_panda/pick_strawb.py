@@ -29,6 +29,7 @@ from mujoco_playground._src import collision
 from mujoco_playground._src import mjx_env
 from mujoco_playground._src.manipulation.franka_emika_panda import panda_serl
 from mujoco_playground._src.manipulation.franka_emika_panda.panda_kinematics_serl import opspace
+from mujoco.mjx._src import math
 
 _ARM_JOINTS = [
     "joint1",
@@ -145,6 +146,7 @@ class PandaPickStrawb(panda_serl.PandaBaseSERL):
     self.default_obj_pos = np.array([0.42, 0, 0.95])
     self.initial_position = np.array([0.1, 0.0, 0.75], dtype=np.float32)
     self.initial_orientation = [0.725, 0.0, 0.688, 0.0]
+    self._obj_body = self._mj_model.body("block1").id
 
     # Set gripper in sight of camera
     self._post_init()
@@ -203,12 +205,16 @@ class PandaPickStrawb(panda_serl.PandaBaseSERL):
     target_pos = self.initial_position
 
     # initialize pipeline state
+    print(f"nv: {self._mjx_model.nv}")
     data = mjx_env.init(
         self._mjx_model,
-        jp.array(self.init_q),
-        jp.zeros(self._mjx_model.nv, dtype=float),
-        ctrl=self._init_ctrl,
     )
+    # data = mjx_env.init(
+    #     self._mjx_model,
+    #     jp.array(self.init_q),
+    #     jp.zeros(self._mjx_model.nv, dtype=float),
+    #     ctrl=None,
+    # )
 
     target_quat = jp.array(self.initial_orientation, dtype=float)
     data = data.replace(
@@ -234,7 +240,7 @@ class PandaPickStrawb(panda_serl.PandaBaseSERL):
         'target_pos': target_pos,
         'reached_box': jp.array(0.0, dtype=float),
         'prev_reward': jp.array(0.0, dtype=float),
-        'current_pos': jp.array(self.data.sensor("pinch_pos").data),
+        'current_pos': data.site_xpos[self._gripper_site],
         'newly_reset': jp.array(False, dtype=bool),
         'prev_action': jp.zeros(3),
         '_steps': jp.array(0, dtype=int),
@@ -274,7 +280,7 @@ class PandaPickStrawb(panda_serl.PandaBaseSERL):
     state.info['prev_reward'] = jp.where(
         newly_reset, 0.0, state.info['prev_reward']
     )
-    state.info['current_pos'] = jp.array(self.data.sensor("pinch_pos").data)
+    state.info['current_pos'] = data.site_xpos[self._gripper_site]
     state.info['reached_box'] = jp.where(
         newly_reset, 0.0, state.info['reached_box']
     )

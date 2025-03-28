@@ -21,6 +21,7 @@ from mujoco_playground import manipulation
 from mujoco_playground import wrapper
 from mujoco_playground._src.manipulation.franka_emika_panda import randomize_vision as randomize
 from mujoco_playground.config import manipulation_params
+import cv2
 
 np.set_printoptions(precision=3, suppress=True, linewidth=100)
 
@@ -58,3 +59,19 @@ env = wrapper.wrap_for_brax_training(
     action_repeat=1,
     randomization_fn=randomization_fn
 )
+
+jit_reset = jax.jit(env.reset)
+jit_step = jax.jit(env.step)
+
+def tile(img, d):
+    assert img.shape[0] == d*d
+    img = img.reshape((d,d)+img.shape[1:])
+    return np.concat(np.concat(img, axis=1), axis=1)
+
+def unvmap(x):
+    return jax.tree.map(lambda y: y[0], x)
+
+state = jit_reset(jax.random.split(jax.random.PRNGKey(0), num_envs))
+image = np.array(state.obs['pixels/view_0'])
+cv2.imshow(image)
+cv2.waitKey(0)
