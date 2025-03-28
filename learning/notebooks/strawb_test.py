@@ -72,6 +72,6 @@ def unvmap(x):
     return jax.tree.map(lambda y: y[0], x)
 
 state = jit_reset(jax.random.split(jax.random.PRNGKey(0), num_envs))
-image = np.array(state.obs['pixels/view_0'])
-cv2.imshow("image", image)
-cv2.waitKey(0)
+image = np.array(state.obs['pixels/view_0'][0])
+cv2.imshow(image)
+
