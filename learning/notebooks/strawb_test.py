@@ -73,5 +73,5 @@ def unvmap(x):
 
 state = jit_reset(jax.random.split(jax.random.PRNGKey(0), num_envs))
 image = np.array(state.obs['pixels/view_0'])
-cv2.imshow(image)
+cv2.imshow("image", image)
 cv2.waitKey(0)

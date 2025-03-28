@@ -40,7 +40,7 @@ _FINGER_JOINTS = ["finger_joint1", "finger_joint2"]
 def get_assets() -> Dict[str, bytes]:
   assets = {}
   path = mjx_env.ROOT_PATH / "manipulation" / "franka_emika_panda" / "xmls" / "panda_serl"
-  mjx_env.update_assets(assets, path, "*.xml")
+  mjx_env.update_assets(assets, path, "mjmodel.xml")
   mjx_env.update_assets(assets, path / "textures")
   mjx_env.update_assets(assets, path / "assets")
   mjx_env.update_assets(assets, path / "textures" / "skyboxes")

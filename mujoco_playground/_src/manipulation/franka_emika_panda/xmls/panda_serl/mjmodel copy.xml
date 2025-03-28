@@ -17,7 +17,7 @@
 
   <default>
     <default class="panda">
-      <material specular="0.5" shininess="0.25"/>
+      <material shininess="0.25"/>
       <joint range="-2.8973 2.8973" armature="0.1" damping="1"/>
       <default class="finger">
         <joint type="slide" range="0 0.04"/>
@@ -40,9 +40,15 @@
     </default>
   </default>
 
+  <custom>
+    <text name="composite_a" data="rope_a"/>
+    <text name="composite_b" data="rope_b"/>
+    <text name="composite_c" data="rope_c"/>
+  </custom>
+
   <asset>
     <texture type="skybox" name="space_2" file="textures/skyboxes/space_2.png" gridsize="3 4" gridlayout=".U..LFRB.D.."/>
-    <!-- <texture type="skybox" name="sky_4" file="textures/skyboxes/sky_4.png" gridsize="3 4" gridlayout=".U..LFRB.D.."/>
+    <texture type="skybox" name="sky_4" file="textures/skyboxes/sky_4.png" gridsize="3 4" gridlayout=".U..LFRB.D.."/>
     <texture type="skybox" name="field_5" file="textures/skyboxes/field_5.png" gridsize="3 4" gridlayout=".U..LFRB.D.."/>
     <texture type="skybox" name="field_3" file="textures/skyboxes/field_3.png" gridsize="3 4" gridlayout=".U..LFRB.D.."/>
     <texture type="skybox" name="desert" file="textures/skyboxes/desert.png" gridsize="3 4" gridlayout=".U..LFRB.D.."/>
@@ -61,16 +67,16 @@
     <texture type="skybox" name="sky_2" file="textures/skyboxes/sky_2.png" gridsize="3 4" gridlayout=".U..LFRB.D.."/>
     <texture type="skybox" name="forest" file="textures/skyboxes/forest.png" gridsize="3 4" gridlayout=".U..LFRB.D.."/>
     <texture type="skybox" name="stairs" file="textures/skyboxes/stairs.png" gridsize="3 4" gridlayout=".U..LFRB.D.."/>
-    <texture type="skybox" name="sky_3" file="textures/skyboxes/sky_3.png" gridsize="3 4" gridlayout=".U..LFRB.D.."/> -->
+    <texture type="skybox" name="sky_3" file="textures/skyboxes/sky_3.png" gridsize="3 4" gridlayout=".U..LFRB.D.."/>
     <texture type="2d" name="table_surface" file="textures/Table.png"/>
     <texture type="2d" name="plywood" file="textures/Wood.png"/>
     <texture type="2d" name="brick_wall" file="textures/Bricks0104.png"/>
     <texture type="2d" name="aluminium" file="textures/aluminium.png"/>
     <texture type="2d" name="Grass001" file="textures/Grass001_2K-PNG_Color.png"/>
-    <!-- <texture type="2d" name="PavingStones131" file="textures/PavingStones131_2K-PNG_Color.png"/>
+    <texture type="2d" name="PavingStones131" file="textures/PavingStones131_2K-PNG_Color.png"/>
     <texture type="2d" name="Bricks095" file="textures/Bricks095_2K-PNG_Color.png"/>
     <texture type="2d" name="Tiles074" file="textures/Tiles074_2K-PNG_Color.png"/>
-    <texture type="2d" name="DiamondPlate008C" file="textures/DiamondPlate008C_2K-PNG_Color.png"/>
+    <!-- <texture type="2d" name="DiamondPlate008C" file="textures/DiamondPlate008C_2K-PNG_Color.png"/>
     <texture type="2d" name="Ground072" file="textures/Ground072_2K-PNG_Color.png"/>
     <texture type="2d" name="Metal056C" file="textures/Metal056C_2K-PNG_Color.png"/>
     <texture type="2d" name="Planks033B" file="textures/Planks033B_2K-PNG_Color.png"/>
@@ -99,8 +105,8 @@
     <texture type="2d" name="Wood059" file="textures/Wood059_2K-PNG_Color.png"/>
     <texture type="2d" name="Tiles078" file="textures/Tiles078_2K-PNG_Color.png"/>
     <texture type="2d" name="Fabric019" file="textures/Fabric019_2K-PNG_Color.png"/>
-    <texture type="2d" name="Travertine013" file="textures/Travertine013_2K-PNG_Color.png"/>
-    <texture type="2d" name="Bricks051" file="textures/Bricks051_2K-PNG_Color.png"/> -->
+    <texture type="2d" name="Travertine013" file="textures/Travertine013_2K-PNG_Color.png"/> -->
+    <texture type="2d" name="Bricks051" file="textures/Bricks051_2K-PNG_Color.png"/>
     <texture name="strawb_color" type="2d" file="textures/strawberry.png"/>
     <texture name="strawb_leaves" type="2d" file="textures/strawberry_leaves.png"/>
     <texture type="2d" name="strawb2_color" file="textures/strawberry_2.png"/>
@@ -740,8 +746,8 @@
           </body>
         </body>
       </body>
-    </body> -->
-  </worldbody>
+    </body>
+  </worldbody> -->
 
   <contact>
     <exclude body1="aB_first" body2="aB_1"/>
