@@ -271,26 +271,27 @@ class PandaPickStrawb(panda_serl.PandaBaseSERL):
 
   def step(self, state: mjx_env.State, action: jax.Array) -> mjx_env.State:
     """Runs one timestep of the environment's dynamics."""
-    # Add action delay
     state.info['rng'], key = jax.random.split(state.info['rng'])
-
     state.info['newly_reset'] = state.info['_steps'] == 0
-
     newly_reset = state.info['newly_reset']
     state.info['prev_reward'] = jp.where(
         newly_reset, 0.0, state.info['prev_reward']
     )
-    state.info['current_pos'] = data.site_xpos[self._gripper_site]
     state.info['reached_box'] = jp.where(
         newly_reset, 0.0, state.info['reached_box']
     )
     state.info['prev_action'] = jp.where(
         newly_reset, jp.zeros(3), state.info['prev_action']
     )
+    current_pos = state.data.site_xpos[self._gripper_site]
+    state.info['current_pos'] = current_pos
+    current_rot = state.data.site_xmat[self._gripper_site].ravel()
 
     # Cartesian control
-    increment = jp.zeros(4)
-    increment = increment.at[1:].set(action)  # set y, z and gripper commands.
+    tau = opspace(
+
+
+    )
     ctrl, new_tip_position, no_soln = self._move_tip(
         state.info['current_pos'],
         self._start_tip_transform[:3, :3],
